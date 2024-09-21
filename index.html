@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="se">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+      crossorigin="anonymous"
+    />
+    <style>
+      th,
+      td {
+        border: 1px solid black;
+        padding: 0px;
+        text-align: left;
+      }
+
+      table {
+        table-layout: auto;
+        width: 100%;
+      }
+
+      table td:nth-last-child(-n + 4),
+      table th:nth-last-child(-n + 4) {
+        width: 22%; /* Adjust this percentage as needed */
+      }
+
+      @media screen {
+        .page {
+          margin: 6rem 0;
+        }
+      }
+
+      @media print {
+        body {
+          font-size: 90%; /* Reduce font size for print */
+        }
+
+        .container {
+          width: 100% !important;
+          max-width: none !important;
+          padding-left: 0 !important;
+          padding-right: 0 !important;
+        }
+        .no-print {
+          display: none;
+        }
+
+        .page {
+          page-break-after: always;
+        }
+
+        .page:last-of-type {
+          page-break-after: auto;
+        }
+
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 90%; /* Scale down table content font */
+        }
+
+        .page {
+          height: 100vh;
+          overflow: hidden;
+        }
+      }
+    </style>
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app" class="container">
+      <div>
+        <button id="decrementYearButton" class="btn btn-sm btn-light no-print">
+          <span id="prevYear">PREVIOUS_YEAR</span> &lt;</button
+        ><button id="incrementYearButton" class="btn btn-sm btn-light no-print">
+          &gt; <span id="nextYear">NEXT_YEAR</span>
+        </button>
+      </div>
+      <section class="page" id="page-januari">
+        <div class="container text-center">
+          <div class="row align-items-start">
+            <div class="col">Tvättstuga</div>
+            <div class="col"><h2 class="monthAndYear">MÅNAD ÅR</h2></div>
+            <div class="col">Villand 13</div>
+          </div>
+        </div>
+        <div>
+          <table class="table table-striped table-sm">
+            <thead>
+              <tr>
+                <th>Veckodag</th>
+                <th>Datum</th>
+                <th>0700-1000</th>
+                <th>1000-1300</th>
+                <th>1300-1600</th>
+                <th>1600-1900</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </body>
+  <script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+    crossorigin="anonymous"
+  ></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script>
+    const months = [
+      { name: 'Januari', days: 31 },
+      { name: 'Februari', days: 28 },
+      { name: 'Mars', days: 31 },
+      { name: 'April', days: 30 },
+      { name: 'Maj', days: 31 },
+      { name: 'Juni', days: 30 },
+      { name: 'Juli', days: 31 },
+      { name: 'Augusti', days: 31 },
+      { name: 'September', days: 30 },
+      { name: 'Oktober', days: 31 },
+      { name: 'November', days: 30 },
+      { name: 'December', days: 31 },
+    ];
+    const weekdays = [
+      'Måndag',
+      'Tisdag',
+      'Onsdag',
+      'Torsdag',
+      'Fredag',
+      'Lördag',
+      'Söndag',
+    ];
+
+    init();
+
+    let year;
+    const januaryPage = document.getElementById('page-januari');
+
+    changeYear(new Date().getFullYear());
+
+    function changeYear(newYear) {
+      year = newYear;
+      months[1].days = new Date(year, 1, 29).getDate() === 29 ? 29 : 28;
+      initButtons();
+      initPageElements();
+      markRedDays();
+    }
+
+    function init() {
+      document
+        .getElementById('decrementYearButton')
+        .addEventListener('click', decrementYear);
+      document
+        .getElementById('incrementYearButton')
+        .addEventListener('click', incrementYear);
+    }
+
+    function initButtons() {
+      document.getElementById('decrementYearButton').disabled = year === 2024;
+      document.getElementById('prevYear').textContent = year - 1;
+      document.getElementById('nextYear').textContent = year + 1;
+    }
+
+    function initPageElements() {
+      resetMonthPages();
+      createMonthPages();
+      addDaysToMonths();
+      format();
+    }
+
+    function createMonthPages() {
+      for (let i = 1; i < months.length; i++) {
+        const month = months[i];
+        const newMonthPage = januaryPage.cloneNode(true);
+        newMonthPage.id = `page-${month.name.toLowerCase()}`;
+        januaryPage.parentNode.appendChild(newMonthPage);
+        newMonthPage.getElementsByClassName(
+          'monthAndYear'
+        )[0].textContent = `${month.name.toUpperCase()} ${year}`;
+      }
+    }
+
+    function addDaysToMonths() {
+      for (let i = 0; i < months.length; i++) {
+        addDaysToMonth(months[i], i, year);
+      }
+    }
+
+    function addDaysToMonth(month, monthIndex, year) {
+      const monthPage = document.getElementById(
+        `page-${month.name.toLowerCase()}`
+      );
+      const tbody = monthPage.getElementsByTagName('tbody')[0];
+      for (let i = 1; i <= month.days; i++) {
+        const row = tbody.insertRow(-1);
+        const weekDayIndex = new Date(year, monthIndex, i).getUTCDay();
+        const weekdayCell = row.insertCell(-1);
+        weekdayCell.textContent = weekdays[weekDayIndex];
+        const dateCell = (row.insertCell(-1).textContent = i);
+        const firstCell = row.insertCell(-1);
+        if (weekDayIndex === 6) {
+          firstCell.style.backgroundColor = 'gray';
+        }
+        for (let j = 0; j < 3; j++) {
+          row.insertCell(-1);
+        }
+      }
+    }
+
+    function format() {
+      // center timeslot headers
+      document.getElementsByClassName(
+        'monthAndYear'
+      )[0].textContent = `${months[0].name.toUpperCase()} ${year}`;
+      [...document.getElementsByTagName('th')]
+        .filter((th) => th.textContent.match(/(\d{2})00-(\d{2})00/))
+        .forEach((th) => (th.style.textAlign = 'center'));
+
+      // right align dates
+      [...document.getElementsByTagName('td')]
+        .filter((td) => td.textContent.match(/^\d{1,2}$/))
+        .forEach((td) => (td.style.textAlign = 'right'));
+    }
+
+    function resetMonthPages() {
+      const monthPages = document.getElementsByClassName('page');
+      while (monthPages.length > 1) {
+        monthPages[1].remove();
+      }
+      const tbody = januaryPage.getElementsByTagName('tbody')[0];
+      while (tbody.rows.length > 0) {
+        tbody.deleteRow(-1);
+      }
+    }
+
+    function decrementYear() {
+      changeYear(year - 1);
+    }
+
+    function incrementYear() {
+      changeYear(year + 1);
+    }
+
+    function markRedDays() {
+      axios
+        .get('https://api.dryg.net/dagar/v2.1/' + year)
+        .then((response) => {
+          const redDays = response.data.dagar.filter(
+            (day) => day['röd dag'] === 'Ja'
+          );
+          redDays.forEach((redDay) => {
+            const date = new Date(redDay.datum);
+            const month = date.getMonth();
+            const day = date.getDate();
+            const monthPage = document.getElementById(
+              `page-${months[month].name.toLowerCase()}`
+            );
+            const tbody = monthPage.getElementsByTagName('tbody')[0];
+            const rows = tbody.rows;
+            const row = rows[day - 1];
+            const cell = row.getElementsByTagName('td')[2];
+            cell.style.backgroundColor = 'gray';
+            cell.textContent = redDay.helgdag;
+          });
+        })
+        .catch((error) => {
+          console.error(error);
+        });
+    }
+  </script>
+</html>
